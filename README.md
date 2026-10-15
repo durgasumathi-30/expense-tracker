@@ -17,7 +17,7 @@ A web app to record daily expenses and see where the money goes. Built with Pyth
 ## Screenshots
 
 
-![Dashboard](screenshot1.png)
+![Dashboard](Screenshot1.png)
 
 
 
