@@ -1,38 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Expense Tracker</h1>
+    <header class="topbar">
+        <h1>💰 Expense Tracker</h1>
+        <p>Track your spending and see where your money goes</p>
+    </header>
 
-    <form method="POST" action="/add">
-        <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-        <input type="text" name="category" placeholder="Category" required>
-        <input type="date" name="date" required>
-        <input type="text" name="note" placeholder="Note">
-        <button type="submit">Add</button>
-    </form>
+    <main class="container">
 
-    <h2>All Expenses</h2>
-    <table border="1">
-        <tr>
-            <th>Amount</th><th>Category</th><th>Date</th><th>Note</th><th>Action</th>
-        </tr>
-        {% for e in expenses %}
-        <tr>
-            <td>{{ e["amount"] }}</td>
-            <td>{{ e["category"] }}</td>
-            <td>{{ e["date"] }}</td>
-            <td>{{ e["note"] }}</td>
-            <td>
-                <a href="/edit/{{ e['id'] }}">Edit</a>
-    <form method="POST" action="/delete/{{ e['id'] }}">
-        <button type="submit">Delete</button>
-    </form>
-</td>
-        </tr>
-        {% endfor %}
-    </table>
+        <section class="card">
+            <h2>Add Expense</h2>
+            <form method="POST" action="/add" id="expenseForm" class="form-grid">
+                <input type="number" step="0.01" name="amount" placeholder="Amount (₹)" required>
+                <input type="text" name="category" placeholder="Category" required>
+                <input type="date" name="date" required>
+                <input type="text" name="note" placeholder="Note (optional)">
+                <button type="submit" class="btn">Add Expense</button>
+            </form>
+        </section>
+
+        <section class="stats">
+            <div class="stat-card">
+                <span class="stat-label">Spent this month</span>
+                <span class="stat-value">₹{{ "%.2f"|format(total) }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Categories this month</span>
+                <span class="stat-value">{{ categories|length }}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Total entries</span>
+                <span class="stat-value">{{ expenses|length }}</span>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>This Month's Summary</h2>
+            {% if categories %}
+            <div class="summary-grid">
+                <div class="table-wrap">
+                    <table>
+                        <tr><th>Category</th><th>Total</th></tr>
+                        {% for c in categories %}
+                        <tr>
+                            <td>{{ c["category"] }}</td>
+                            <td class="amount">₹{{ "%.2f"|format(c["total"]) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                <div class="chart-box">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+            {% else %}
+            <p class="empty">No expenses this month yet. Add one above.</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <h2>All Expenses</h2>
+            {% if expenses %}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Date</th><th>Category</th><th>Amount</th><th>Note</th><th>Action</th>
+                    </tr>
+                    {% for e in expenses %}
+                    <tr>
+                        <td>{{ e["date"] }}</td>
+                        <td><span class="badge">{{ e["category"] }}</span></td>
+                        <td class="amount">₹{{ "%.2f"|format(e["amount"]) }}</td>
+                        <td>{{ e["note"] or "—" }}</td>
+                        <td>
+                            <div class="actions">
+                                <a class="btn btn-light btn-small" href="/edit/{{ e['id'] }}">Edit</a>
+                                <form method="POST" action="/delete/{{ e['id'] }}"
+                                      onsubmit="return confirm('Delete this expense?')">
+                                    <button type="submit" class="btn btn-danger btn-small">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% else %}
+            <p class="empty">No expenses yet.</p>
+            {% endif %}
+        </section>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const labels = {{ categories | map(attribute='category') | list | tojson }};
+        const values = {{ categories | map(attribute='total') | list | tojson }};
+        if (labels.length > 0) {
+            new Chart(document.getElementById('chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#4f46e5', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+    plugins: {
+        legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, font: { size: 11 }, padding: 8 }
+        }
+    }
+}
+            });
+        }
+
+        document.getElementById("expenseForm").addEventListener("submit", function (e) {
+            const amount = parseFloat(this.amount.value);
+            const category = this.category.value.trim();
+
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter an amount greater than 0.");
+                e.preventDefault();
+                return;
+            }
+            if (category === "") {
+                alert("Category cannot be empty.");
+                e.preventDefault();
+            }
+        });
+    </script>
 </body>
 </html>

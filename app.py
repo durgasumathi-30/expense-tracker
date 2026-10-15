@@ -3,10 +3,12 @@ import sqlite3
 
 app = Flask(__name__)
 
+
 def get_db():
     conn = sqlite3.connect("expenses.db")
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_db()
@@ -19,12 +21,23 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 @app.route("/")
 def home():
     conn = get_db()
     expenses = conn.execute("SELECT * FROM expenses ORDER BY date DESC").fetchall()
+    total = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses "
+        "WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')"
+    ).fetchone()[0]
+    categories = conn.execute(
+        "SELECT category, SUM(amount) AS total FROM expenses "
+        "WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now') "
+        "GROUP BY category"
+    ).fetchall()
     conn.close()
-    return render_template("index.html", expenses=expenses)
+    return render_template("index.html", expenses=expenses, total=total, categories=categories)
+
 
 @app.route("/add", methods=["POST"])
 def add():
@@ -41,6 +54,7 @@ def add():
     conn.close()
     return redirect("/")
 
+
 @app.route("/delete/<int:id>", methods=["POST"])
 def delete(id):
     conn = get_db()
@@ -48,6 +62,8 @@ def delete(id):
     conn.commit()
     conn.close()
     return redirect("/")
+
+
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit(id):
     conn = get_db()
@@ -63,6 +79,9 @@ def edit(id):
     expense = conn.execute("SELECT * FROM expenses WHERE id = ?", (id,)).fetchone()
     conn.close()
     return render_template("edit.html", e=expense)
+
+
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
